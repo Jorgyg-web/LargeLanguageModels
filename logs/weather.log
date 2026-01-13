@@ -1,0 +1,3 @@
+2026-01-13 13:40:03,047 INFO {"request": {"fecha": "2026-01-14"}, "result": {"fecha": "2026-01-14", "temperature_c": 29, "condition": "sunny"}}
+2026-01-13 13:40:03,048 INFO {"request": {"fecha": "2026-01-15"}, "result": {"fecha": "2026-01-15", "temperature_c": 14, "condition": "cloudy"}}
+2026-01-13 13:40:03,048 INFO {"request": {"fecha": "2026-01-16"}, "result": {"fecha": "2026-01-16", "temperature_c": 24, "condition": "cloudy"}}
