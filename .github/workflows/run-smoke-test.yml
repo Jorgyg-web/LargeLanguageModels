@@ -18,3 +18,26 @@ jobs:
         run: pip install -r requirements.txt
       - name: Run smoke test
         run: python scripts/smoke_test.py
+      - name: Ensure artifact paths exist
+        run: |
+          mkdir -p artifacts/tenerife_index || true
+          mkdir -p logs || true
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tenerife-artifacts
+          path: |
+            artifacts/tenerife_index
+            artifacts/tenerife_index/metrics_precision_at_k.csv
+            logs/weather.log
+      - name: (Optional) Convert notebook to HTML and upload
+        if: always()
+        run: |
+          pip install nbconvert
+          jupyter nbconvert --to html notebook.ipynb --output notebook.html || true
+      - name: Upload notebook html
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notebook-html
+          path: notebook.html
