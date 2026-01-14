@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Byte-compiled / optimized / DLL files
+*.so
+*.dylib
+*.dll
+
+# Distribution / packaging
+build/
+dist/
+eggs/
+*.egg-info/
+.eggs/
+
+# Jupyter Notebook checkpoints and outputs
+.ipynb_checkpoints
+*.nbconvert.ipynb
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Logs
+logs/
+
+# Data, artifacts and results (do NOT commit large files)
+artifacts/
+data/
+
+# Local-only notebooks / backups
+*.ipynb.bak
+
+# Python env lock files
+Pipfile.lock
+
+# Local secrets / environment variables
+.env
+.env.*
+
+# Pytest cache
+.pytest_cache/
+
+# Temporary files
+*.tmp
+*.log

@@ -1,6 +1,6 @@
 import streamlit as st
 from pathlib import Path
-from src.rag_tools import get_embeddings, get_weather
+from src.rag_tools import get_embeddings, get_weather, respond_with_rag
 import numpy as np
 import json
 
@@ -14,6 +14,7 @@ temperature = st.sidebar.slider('Temperatura', 0.0, 2.0, 0.7)
 max_tokens = st.sidebar.slider('Max tokens', 100, 2000, 500)
 top_p = st.sidebar.slider('Top-P', 0.0, 1.0, 0.9)
 st.sidebar.write(f'Parámetros activos: T={temperature}, Max={max_tokens}, P={top_p}')
+use_llm_sidebar = st.sidebar.checkbox('Usar LLM (si OPENAI_API_KEY)', value=False)
 
 # Load precomputed index
 ART = Path('artifacts') / 'tenerife_index'
@@ -63,6 +64,15 @@ if query and st.session_state.get('loaded'):
             with col2:
                 st.write(f'**Chunk {i}**')
                 st.write(st.session_state.chunks[i][:500] + '...')
+        # Optionally call LLM to generate an answer with citations
+        if use_llm_sidebar:
+            try:
+                res = respond_with_rag(query, vectors=st.session_state.vectors, chunks=st.session_state.chunks, index=None, top_k=3, use_llm=True)
+                st.subheader('Respuesta generada (LLM + citas)')
+                st.write(res['answer'])
+                st.markdown('**Fuentes:** ' + ', '.join(res['sources']))
+            except Exception as e:
+                st.error(f'Error al generar respuesta LLM: {e}')
     except Exception as e:
         st.error(f'Error en búsqueda: {e}')
 

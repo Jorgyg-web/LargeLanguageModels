@@ -180,3 +180,66 @@ def load_faiss_index(path: str, dim: int):
         raise RuntimeError('faiss not available')
     index = faiss.read_index(str(p))
     return index
+
+
+# ---------- RAG + LLM responder con citas + soporte function-calling ----------
+def _compose_prompt(query: str, top_chunks: list) -> str:
+    ctx = "\n\n---\n\n".join(f"Source {i+1}:\n{c[:800]}" for i, c in enumerate(top_chunks))
+    prompt = (
+        "Eres un asistente turístico. Usa la información de las fuentes abajo para responder.\n\n"
+        f"{ctx}\n\n"
+        f"Pregunta: {query}\n\n"
+        "Devuelve una respuesta concisa y cita las fuentes (Source 1, Source 2...)."
+    )
+    return prompt
+
+
+def respond_with_rag(query: str, vectors=None, chunks=None, index=None, top_k: int = 3, use_llm: bool = True):
+    """
+    Retrieve top-k chunks for `query`, compose a prompt and optionally call the LLM.
+    Returns dict with `answer`, `sources` and `chunks` used.
+    """
+    if vectors is None or chunks is None:
+        raise ValueError("vectors and chunks must be provided")
+
+    # compute query vector and do brute-force cosine retrieval
+    qv = get_embeddings([query])[0]
+    sims = []
+    for v in vectors:
+        a = qv / (np.linalg.norm(qv) + 1e-12)
+        b = v / (np.linalg.norm(v) + 1e-12)
+        sims.append(float(np.dot(a, b)))
+    top_idx = sorted(range(len(sims)), key=lambda i: sims[i], reverse=True)[:top_k]
+    top_chunks = [chunks[i] for i in top_idx]
+    prompt = _compose_prompt(query, top_chunks)
+
+    # Call LLM if requested and available
+    if use_llm and os.getenv("OPENAI_API_KEY") and openai is not None:
+        try:
+            if hasattr(openai, "OpenAI"):
+                client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+                # Try the responses/generative API if available
+                if hasattr(client, "responses"):
+                    resp = client.responses.create(model="gpt-4o-mini", input=prompt, max_output_tokens=512)
+                    # extract text from response object/dict
+                    if hasattr(resp, "output_text") and resp.output_text:
+                        text = resp.output_text
+                    else:
+                        # fallback extraction
+                        text = ""
+                        if isinstance(resp, dict):
+                            text = resp.get("output_text") or resp.get("text") or str(resp)
+                    return {"answer": text.strip(), "sources": [f"Source {i+1}" for i in range(len(top_chunks))], "chunks": top_chunks}
+            # older ChatCompletion fallback
+            if hasattr(openai, "ChatCompletion"):
+                msg = [{"role": "user", "content": prompt}]
+                resp = openai.ChatCompletion.create(model="gpt-4o", messages=msg, max_tokens=512)
+                text = resp["choices"][0]["message"]["content"]
+                return {"answer": text.strip(), "sources": [f"Source {i+1}" for i in range(len(top_chunks))], "chunks": top_chunks}
+        except Exception as e:
+            logging.warning("LLM call failed, returning retrieval-only summary: %s", e)
+
+    # Fallback: return retrieval context as simple answer
+    summary = prompt[:1200]
+    return {"answer": summary, "sources": [f"Source {i+1}" for i in range(len(top_chunks))], "chunks": top_chunks}
+
